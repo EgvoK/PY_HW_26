@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Todo list</title>
+<style>
+td {padding:5px;}
+button{margin: 5px;}
+</style>
+</head>
+<body>
+    <h2>Todo list</h2>
+    <div>
+        <input type="hidden" id="itemId" />
+        <p>
+            Title:<br/>
+            <input id="itemTitle" />
+        </p>
+        <p>
+            Description:<br />
+            <input id="itemDescription" />
+        </p>
+        <p>
+            Priority:<br />
+            <input id="itemPriority" type="number" />
+        </p>
+         <p>
+            <button id="saveBtn">Save</button>
+            <button id="resetBtn">Reset</button>
+        </p>
+    </div>
+    <table>
+        <thead><tr><th>Title</th><th>Description</th><th>Priority</th><th></th></tr></thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <script>
+        async function getItems() {
+            const response = await fetch("/api/items", {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const items = await response.json();
+                const rows = document.querySelector("tbody");
+                items.forEach(item => rows.append(row(item)));
+            }
+        }
+
+        async function getItem(id) {
+            const response = await fetch(`/api/items/${id}`, {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const item = await response.json();
+                document.getElementById("itemId").value = item.id;
+                document.getElementById("itemTitle").value = item.title;
+                document.getElementById("itemDescription").value = item.description;
+                document.getElementById("itemPriority").value = item.priority;
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        async function createItem(itemTitle, itemDescription, itemPriority) {
+
+            const response = await fetch("api/items", {
+                method: "POST",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    title: itemTitle,
+                    description: itemDescription,
+                    priority: parseInt(itemPriority, 10)
+                })
+            });
+            if (response.ok === true) {
+                const item = await response.json();
+                document.querySelector("tbody").append(row(item));
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        async function editItem(itemId, itemTitle, itemDescription, itemPriority) {
+            const response = await fetch("api/items", {
+                method: "PUT",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    id: itemId,
+                    title: itemTitle,
+                    description: itemDescription,
+                    priority: parseInt(itemPriority, 10)
+                })
+            });
+            if (response.ok === true) {
+                const item = await response.json();
+                document.querySelector(`tr[data-rowid='${item.id}']`).replaceWith(row(item));
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        async function deleteItem(id) {
+            const response = await fetch(`/api/items/${id}`, {
+                method: "DELETE",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const item = await response.json();
+                document.querySelector(`tr[data-rowid='${item.id}']`).remove();
+            }
+            else {
+                const error = await response.json();
+                console.log(error.message);
+            }
+        }
+
+        function reset() {
+            document.getElementById("itemId").value =
+            document.getElementById("itemTitle").value =
+            document.getElementById("itemDescription").value =
+            document.getElementById("itemPriority").value = "";
+        }
+
+        function row(item) {
+
+            const tr = document.createElement("tr");
+            tr.setAttribute("data-rowid", item.id);
+
+            const titleTd = document.createElement("td");
+            titleTd.append(item.title);
+            tr.append(titleTd);
+
+            const descriptionTd = document.createElement("td");
+            descriptionTd.append(item.description);
+            tr.append(descriptionTd);
+
+            const priorityTd = document.createElement("td");
+            priorityTd.append(item.priority);
+            tr.append(priorityTd);
+
+            const linksTd = document.createElement("td");
+
+            const editLink = document.createElement("button");
+            editLink.append("Edit");
+            editLink.addEventListener("click", async() => await getItem(item.id));
+            linksTd.append(editLink);
+
+            const removeLink = document.createElement("button");
+            removeLink.append("Delete");
+            removeLink.addEventListener("click", async () => await deleteItem(item.id));
+
+            linksTd.append(removeLink);
+            tr.appendChild(linksTd);
+
+            return tr;
+        }
+
+        document.getElementById("resetBtn").addEventListener("click", () =>  reset());
+
+        document.getElementById("saveBtn").addEventListener("click", async () => {
+
+            const id = document.getElementById("itemId").value;
+            const title = document.getElementById("itemTitle").value;
+            const description = document.getElementById("itemDescription").value;
+            const priority = document.getElementById("itemPriority").value;
+            if (id === "")
+                await createItem(title, description,priority);
+            else
+                await editItem(id, title, description,priority);
+            reset();
+        });
+
+        getItems();
+    </script>
+</body>
+</html>
